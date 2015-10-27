@@ -10,7 +10,7 @@ fieldTimeSpentLastUpdate= ENV['zendesk_fieldTimeSpentLastUpdate'] || "27024198"
 zd_api = ZendeskAPI::Client.new do |config|
   # Mandatory:
 
-  config.url = ENV['zendesk_url'] || "https://rightscale.zendesk.com/api/v2" # e.g. https://mydesk.zendesk.com/api/v2
+  config.url = ENV['zendesk_url'] || "https://mydesk.zendesk.com/api/v2" # e.g. https://mydesk.zendesk.com/api/v2
 
   # Basic / Token Authentication
   config.username = ENV['zendesk_email'] || 'your@email.com'
@@ -43,40 +43,18 @@ ticketTimeTotal = Hash.new
 
 # Begin looping through tickets modified/created since `reportStartTime`
 zd_api.ticket.incremental_export(reportStartTime).each do |ticket|
-
-## Start-Non-Working-Method
-## This will not work because the incremental_export does not return the `author_id`.
-## Only the `assignee` and `submitter`/requestor are exposed so if an agent works on a ticket and is not the
-## assignee or requestor, they will not get time added to their clock if this method is used.
-## Solution:  Request ZenDesk to add `author_id` to the response from `incremental_exports`
-##
-#  if (ticket["field_#{fieldTimeSpentLastUpdate}"] != nil) && ((ticket["field_#{fieldTimeSpentLastUpdate}"]).to_i > 0)
-#
-#    # Create the hash if it doesn't already exist
-#    if ticketTimeTotal[ticket.submitter_name] === nil
-#      ticketTimeTotal[ticket.submitter_name] = Hash.new
-#    end
-#    if ticketTimeTotal[ticket.submitter_name][ticket.id] === nil
-#      ticketTimeTotal[ticket.submitter_name][ticket.id] = 0
-#    end
-#    # Add the time to the ticket hash
-#    ticketTimeTotal[ticket.submitter_name][ticket.id] += (ticket["field_#{fieldTimeSpentLastUpdate}"]).to_i
-#    
-#  end
-##
-## End-Non-Working-Method
-
-## Because of said limitation with incremental_export response, we need to fetch the audit entries and manually add up the time when the event's `created_at` >= `reportStartTime`
 	
-	# Begin looping through audit entries in ticket
+	# Begin looping through all audit entries in ticket
 	ticket.audits.fetch.each do |audit|
     
-    # Verify the Audit is == or later than the report time.
+    # Verify the Audit timestamp is >= the reportStartTime
     if Time.at(audit.created_at).to_i >= reportStartTime.to_i
 		  # Begin Looping through events in audit entry
       audit.events.each do |event|
-
+        
+        # Verify the event.field_name matches the Time Spent Last Update Field ID
         if (event.field_name == fieldTimeSpentLastUpdate) && (event.value.to_i > 0)
+          
           # Create the Hash objects if they don't already exist
           if ticketTimeTotal[audit.author_id] === nil
             ticketTimeTotal[audit.author_id] = Hash.new
@@ -108,5 +86,5 @@ ticketTimeTotal.each do |agent, values|
   hours = total_seconds / (60 * 60)
   puts "#{values['email']}: #{format("%02d:%02d:%02d", hours, minutes, seconds)} [hh:mm:ss]"
 end
-#puts '--Debugging--'
-#puts JSON.pretty_generate(ticketTimeTotal)
+puts '--Debugging--'
+puts JSON.pretty_generate(ticketTimeTotal)
