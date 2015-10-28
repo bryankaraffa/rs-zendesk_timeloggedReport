@@ -1,7 +1,7 @@
 # ZenDesk Daily Time Logged Report Script
 `generateZenDeskTimeReport.rb` leverages the ZenDesk v2 API and generates a report of all time logged for each agent since the report start time.  Time is recorded and saved using the ZenDesk App: [`zendesk/timetracking_app`](https://github.com/zendesk/timetracking_app).  
 
-# Setup / Usage
+# Setup
 
 ## Download the script / clone the repo
 
@@ -14,19 +14,22 @@ The [Zendesk Ruby API client](https://github.com/zendesk/zendesk_api_client_rb) 
 
 ## Configure Inputs
 ### Required:
-#### $zendesk_url
+#### $zendesk_url [required]
 The API URL for your ZenDesk deployment
-#### $zendesk_email
+#### $zendesk_email [required]
 The ZenDesk user to use to access the ZenDesk API [must have `admin` privileges]
-#### $zendesk_token
+#### $zendesk_token [required]
 The API token for the ZenDesk user to authenticate with.  API tokens are managed in the Zendesk Admin interface at **Admin > Channels > API**.
+
+### Optional:
 #### $zendesk_reportLength [optional]
 Report length [in seconds].  Default is `86400` [24 hours] if not specified.  Cannot be used in conjunction with `$zendesk_reportStartTime`
 #### $zendesk_reportStartTime [optional]
+The Report Start Time, represented in epoch time [UTC / seconds].  If `$zendesk_reportStartTime` is defined, then `$zendesk_reportLength` is **ignored**
 
-_NOTE:  If $zendesk_reportStartTime is set, then $zendesk_reportLength is **ignored**_
 
-## Run Script
+
+# Usage
 
      export zendesk_url="https://mycompany.zendesk.com/api/v2"
      export zendesk_email="myuser@mycompany.com"
@@ -38,9 +41,9 @@ _NOTE:  If $zendesk_reportStartTime is set, then $zendesk_reportLength is **igno
 # Sample Output
 All times are reported in seconds.
 ```
-Report Length:      24:00:00 [hh:mm:ss]
-Report Start Time:  2015-10-27 19:04:59 UTC
-Report End Time:    2015-10-28 19:04:59 UTC  [current time in UTC]
+Report Length:      12:00:00 [hh:mm:ss]
+Report Start Time:  2015-10-28 08:16:37 UTC
+Report End Time:    2015-10-28 20:16:37 UTC  [current time in UTC]
  
 --Results--
 bob.plummer@mycompany.com: 03:56:00 [hh:mm:ss]
