@@ -2,8 +2,9 @@
 require 'zendesk_api'
 require 'json'
 
-reportLength= ENV['zendesk_reportLength'] || 86400 # 24hrs in Seconds
-reportStartTime= ENV['zendesk_reportStartTime'] || "#{Time.now.utc.to_i - reportLength}" # Optionally can specify the reportStartTime precisely
+reportLength= ENV['zendesk_reportLength']|| "86400" # 24hrs in Seconds
+reportLength= reportLength.to_i
+reportStartTime= ENV['zendesk_reportStartTime'] || "#{(Time.now.utc.to_i) - (reportLength)}" # Optionally can specify the reportStartTime precisely
 fieldTimeSpentLastUpdate= ENV['zendesk_fieldTimeSpentLastUpdate'] || "27024198"
 
 
