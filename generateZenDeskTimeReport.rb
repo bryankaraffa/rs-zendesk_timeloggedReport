@@ -2,6 +2,7 @@
 require 'zendesk_api'
 require 'json'
 
+reportOutput= ENV['zendesk_reportOutput'] || "report"
 reportLength= ENV['zendesk_reportLength']|| "86400" # 24hrs in Seconds
 reportLength= reportLength.to_i
 reportStartTime= ENV['zendesk_reportStartTime'] || "#{(Time.now.utc.to_i) - (reportLength)}" # Optionally can specify the reportStartTime precisely
@@ -28,17 +29,11 @@ zd_api = ZendeskAPI::Client.new do |config|
 end
 
 
-seconds = reportLength % 60
-minutes = (reportLength / 60) % 60
-hours = reportLength / (60 * 60)
+
 #puts "Config Details:"
 #puts "API URL:  #{zd_api.config.url}"
 #puts "API Username:  #{zd_api.config.username}"
 #puts "Time Spent (Last Update) Field ID: #{fieldTimeSpentLastUpdate}"
-puts "Report Length:      #{format("%02d:%02d:%02d", hours, minutes, seconds)} [hh:mm:ss]"
-puts "Report Start Time:  #{Time.at(reportStartTime.to_i).utc}"
-puts "Report End Time:    #{Time.now.utc}  [current time in UTC]"
-puts " "
 
 ticketTimeTotal = Hash.new
 
@@ -79,13 +74,51 @@ zd_api.ticket.incremental_export(reportStartTime).each do |ticket|
 	end # End Audits Loop	
 	
 end # End Tickets Loop
-puts '--Results--'
-ticketTimeTotal.each do |agent, values|
-  total_seconds = values['totalTime']
-  seconds = total_seconds % 60
-  minutes = (total_seconds / 60) % 60
-  hours = total_seconds / (60 * 60)
-  puts "#{values['email']}: #{format("%02d:%02d:%02d", hours, minutes, seconds)} [hh:mm:ss]"
+
+
+if reportOutput == "report"
+  puts "--Results--"
+  puts " ____________________________________________________________________"
+  printf("| %-40s |  %-20s  |\n","Agent","Total Time [dd:hh:mm]")
+  ticketTimeTotal.each do |agent, values|
+    total_seconds = values['totalTime']
+    minutes = (total_seconds / 60) % 60
+    hours = total_seconds / (60 * 60)
+    days = total_seconds / (60 * 60 * 24)
+    printf("| %-40s |    %18s   |\n",values['email'],format("%02d:%02d:%02d", days, hours, minutes))
+    
+    #puts "#{values['email']}: #{format("%02d:%02d:%02d", hours, minutes, seconds)} [hh:mm:ss]"
+  end
+  puts " ____________________________________________________________________"
+  
+  puts "--Breakdown--"
+  puts " ____________________________________________________________________"
+  printf("| %-40s | %-10s | %-10s |\n","Agent","Ticket #","Time Spent")
+  puts " ____________________________________________________________________"
+  ticketTimeTotal.each do |agent, values|
+    email=values['email']
+    
+    values['tickets'].each do |ticketNumber, timeSpent|
+      total_seconds = timeSpent
+      seconds = total_seconds % 60
+      minutes = (total_seconds / 60) % 60
+      hours = total_seconds / (60 * 60)
+      printf("| %-40s | %-10s | %-10s |\n",email,ticketNumber,format("%02d:%02d:%02d", hours, minutes, seconds))
+      email=""
+    end
+    puts " ____________________________________________________________________"
+  end
+  
+  puts "--Report Config--"
+  seconds = reportLength % 60
+  minutes = (reportLength / 60) % 60
+  hours = reportLength / (60 * 60)
+  puts "Report Length:      #{format("%02d:%02d:%02d", hours, minutes, seconds)} [hh:mm:ss]"
+  puts "Report Start Time:  #{Time.at(reportStartTime.to_i).utc}"
+  puts "Report End Time:    #{Time.now.utc}  [current time in UTC]"
+  
 end
-puts '--Debugging--'
-puts JSON.pretty_generate(ticketTimeTotal)
+
+if reportOutput == "json"
+  puts JSON.pretty_generate(ticketTimeTotal)
+end
