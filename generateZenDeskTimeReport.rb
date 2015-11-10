@@ -36,12 +36,18 @@ end
 #puts "Time Spent (Last Update) Field ID: #{fieldTimeSpentLastUpdate}"
 
 ticketTimeTotal = Hash.new
-
+ticketDetails = Hash.new
 # Begin looping through tickets modified/created since `reportStartTime`
 zd_api.ticket.incremental_export(reportStartTime).each do |ticket|
 	
 	# Begin looping through all audit entries in ticket
 	ticket.audits.fetch.each do |audit|
+  ## Lazily compiling a ticketDetails hash to reference later when generating the report [contains ticket org and subject]
+  if ticketDetails[ticket.id] === nil
+    ticketDetails[ticket.id] = Hash.new
+    ticketDetails[ticket.id]['subject']=ticket.subject
+    ticketDetails[ticket.id]['organization']=ticket.organization_name
+  end 
     
     # Verify the Audit timestamp is >= the reportStartTime
     if Time.at(audit.created_at).to_i >= reportStartTime.to_i
@@ -77,7 +83,15 @@ end # End Tickets Loop
 
 
 if reportOutput == "report"
-  puts "--Results--"
+  puts "--Report Config--"
+  seconds = reportLength % 60
+  minutes = (reportLength / 60) % 60
+  hours = reportLength / (60 * 60)
+  puts "Report Length:      #{format("%02d:%02d:%02d", hours, minutes, seconds)} [hh:mm:ss]"
+  puts "Report Start Time:  #{Time.at(reportStartTime.to_i).utc}"
+  puts "Report End Time:    #{Time.now.utc}  [current time in UTC]"
+  
+  puts "--Summary--"
   puts " ____________________________________________________________________"
   printf("| %-40s |  %-20s  |\n","Agent","Total Time [dd:hh:mm]")
   ticketTimeTotal.each do |agent, values|
@@ -92,33 +106,27 @@ if reportOutput == "report"
   puts " ____________________________________________________________________"
   
   puts "--Breakdown--"
-  puts " ____________________________________________________________________"
-  printf("| %-40s | %-10s | %-10s |\n","Agent","Ticket #","Time Spent")
-  puts " ____________________________________________________________________"
+  puts " ______________________________________________________________________________________________________"
+  printf("| %-18s | %-8s | %-55s | %-10s |\n","Agent/Ticket Org.","Ticket #","Subject","Time Spent")
+  puts " ______________________________________________________________________________________________________"
   ticketTimeTotal.each do |agent, values|
     email=values['email']
+    printf("| %-100s |\n",email,"","")
     
     values['tickets'].each do |ticketNumber, timeSpent|
-      total_seconds = timeSpent
-      seconds = total_seconds % 60
-      minutes = (total_seconds / 60) % 60
-      hours = total_seconds / (60 * 60)
-      printf("| %-40s | %-10s | %-10s |\n",email,ticketNumber,format("%02d:%02d:%02d", hours, minutes, seconds))
+      seconds = timeSpent % 60
+      minutes = (timeSpent / 60) % 60
+      hours = timeSpent / (60 * 60)
+      printf("| %-18s | %-8s | %-55s | %-10s |\n",ticketDetails[ticketNumber]['organization'].slice(0,18),ticketNumber,ticketDetails[ticketNumber]['subject'].slice(0,55),format("%02d:%02d:%02d", hours, minutes, seconds))
+      #puts ticketDetails[ticketNumber]['subject'].methods
       email=""
     end
-    puts " ____________________________________________________________________"
+    puts " ______________________________________________________________________________________________________"
   end
-  
-  puts "--Report Config--"
-  seconds = reportLength % 60
-  minutes = (reportLength / 60) % 60
-  hours = reportLength / (60 * 60)
-  puts "Report Length:      #{format("%02d:%02d:%02d", hours, minutes, seconds)} [hh:mm:ss]"
-  puts "Report Start Time:  #{Time.at(reportStartTime.to_i).utc}"
-  puts "Report End Time:    #{Time.now.utc}  [current time in UTC]"
-  
+   
 end
 
 if reportOutput == "json"
   puts JSON.pretty_generate(ticketTimeTotal)
 end
+#puts JSON.pretty_generate(ticketDetails)
